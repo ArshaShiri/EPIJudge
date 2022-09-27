@@ -136,7 +136,7 @@ bool IsBinaryTreeBST2(const std::unique_ptr<BinaryTreeNode<int>> &tree)
 
 // Space complexity is O(h) where h is the height of the tree.
 // Time complexity O(n) where n is the number of elements in the tree.
-bool IsBinaryTreeBSTRange(const BinaryTreeNode<int> *tree, int lowerBound, int upperBound)
+bool IsBinaryTreeBSTRange3(const BinaryTreeNode<int> *tree, int lowerBound, int upperBound)
 {
   if (tree == nullptr)
     return true;
@@ -145,20 +145,67 @@ bool IsBinaryTreeBSTRange(const BinaryTreeNode<int> *tree, int lowerBound, int u
   if ((value < lowerBound) || (value > upperBound))
     return false;
 
-  const auto leftIsBST = IsBinaryTreeBSTRange(tree->left.get(), lowerBound, value);
+  const auto leftIsBST = IsBinaryTreeBSTRange3(tree->left.get(), lowerBound, value);
   if (!leftIsBST)
     return false;
 
-  const auto rightIsBST = IsBinaryTreeBSTRange(tree->right.get(), value, upperBound);
+  const auto rightIsBST = IsBinaryTreeBSTRange3(tree->right.get(), value, upperBound);
   if (!rightIsBST)
     return false;
 
   return true;
 }
 
+bool IsBinaryTreeBST3(const std::unique_ptr<BinaryTreeNode<int>> &tree)
+{
+  return IsBinaryTreeBSTRange3(tree.get(), std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+}
+
+/* *********************************************************************************** */
+
+struct NodeAndBounds
+{
+  BinaryTreeNode<int> &node;
+  int lowerBound;
+  int upperBound;
+};
+
+// Space complexity is O(m) where n is the number of elements in the tree.
+// Time complexity O(n) where n is the number of elements in the tree. The advantage is that each level is processes
+// first before going to the next level. BFS.
 bool IsBinaryTreeBST(const std::unique_ptr<BinaryTreeNode<int>> &tree)
 {
-  return IsBinaryTreeBSTRange(tree.get(), std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+  if (tree == nullptr)
+    return true;
+
+  std::queue<NodeAndBounds> nodesToProcess;
+
+  nodesToProcess.emplace(
+    NodeAndBounds{ *(tree.get()), std::numeric_limits<int>::min(), std::numeric_limits<int>::max() });
+
+  while (!nodesToProcess.empty())
+  {
+    const auto &currentNodeAndBound = nodesToProcess.front();
+    const auto currentData = currentNodeAndBound.node.data;
+
+    if (currentData < currentNodeAndBound.lowerBound)
+      return false;
+
+    if (currentData > currentNodeAndBound.upperBound)
+      return false;
+
+    if (currentNodeAndBound.node.left != nullptr)
+      nodesToProcess.emplace(
+        NodeAndBounds{ *(currentNodeAndBound.node.left.get()), currentNodeAndBound.lowerBound, currentData });
+
+    if (currentNodeAndBound.node.right != nullptr)
+      nodesToProcess.emplace(
+        NodeAndBounds{ *(currentNodeAndBound.node.right.get()), currentData, currentNodeAndBound.upperBound });
+
+    nodesToProcess.pop();
+  }
+
+  return true;
 }
 
 int main(int argc, char* argv[]) {
