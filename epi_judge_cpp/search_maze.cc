@@ -9,43 +9,82 @@
 using std::vector;
 enum class Color { kWhite, kBlack };
 struct Coordinate {
-  bool operator==(const Coordinate& that) const {
+  bool operator==(const Coordinate &that) const {
     return x == that.x && y == that.y;
   }
 
   int x, y;
 };
-vector<Coordinate> SearchMaze(vector<vector<Color>> maze, const Coordinate& s,
-                              const Coordinate& e) {
-  // TODO - you fill in here.
-  return {};
+
+bool doSearchMaze(const Coordinate &currentPixel, const Coordinate &e,
+                  std::vector<std::vector<Color>> &maze,
+                  std::vector<Coordinate> &path) {
+  const auto xMax = maze.size() - 1;
+  const auto yMax = maze.at(0).size() - 1;
+  const auto pixelOutOfBound = (currentPixel.x > xMax) ||
+                               (currentPixel.x < 0) ||
+                               (currentPixel.y > yMax) || (currentPixel.y < 0);
+
+  if (pixelOutOfBound)
+    return false;
+
+  const auto pixelColor = maze.at(currentPixel.x).at(currentPixel.y);
+  if (pixelColor == Color::kBlack)
+    return false;
+
+  path.emplace_back(currentPixel);
+
+  // Mark as visited.
+  maze.at(currentPixel.x).at(currentPixel.y) = Color::kBlack;
+
+  if (currentPixel == e)
+    return true;
+
+  const auto adjacentPixels =
+      std::vector<Coordinate>{{currentPixel.x, currentPixel.y + 1},
+                              {currentPixel.x, currentPixel.y - 1},
+                              {currentPixel.x + 1, currentPixel.y},
+                              {currentPixel.x - 1, currentPixel.y}};
+  for (const auto &nextPixel : adjacentPixels) {
+    if (doSearchMaze(nextPixel, e, maze, path))
+      return true;
+  }
+
+  path.pop_back();
+  return false;
+}
+
+std::vector<Coordinate> SearchMaze(std::vector<std::vector<Color>> maze,
+                                   const Coordinate &s, const Coordinate &e) {
+  std::vector<Coordinate> path{};
+  doSearchMaze(s, e, maze, path);
+  return path;
 }
 
 namespace test_framework {
-template <>
-struct SerializationTrait<Color> : SerializationTrait<int> {
+template <> struct SerializationTrait<Color> : SerializationTrait<int> {
   using serialization_type = Color;
 
-  static serialization_type Parse(const json& json_object) {
+  static serialization_type Parse(const json &json_object) {
     return static_cast<serialization_type>(
         SerializationTrait<int>::Parse(json_object));
   }
 };
-}  // namespace test_framework
+} // namespace test_framework
 
 namespace test_framework {
 template <>
 struct SerializationTrait<Coordinate> : UserSerTrait<Coordinate, int, int> {
-  static std::vector<std::string> GetMetricNames(const std::string& arg_name) {
+  static std::vector<std::string> GetMetricNames(const std::string &arg_name) {
     return {};
   }
 
-  static std::vector<int> GetMetrics(const Coordinate& x) { return {}; }
+  static std::vector<int> GetMetrics(const Coordinate &x) { return {}; }
 };
-}  // namespace test_framework
+} // namespace test_framework
 
-bool PathElementIsFeasible(const vector<vector<Color>>& maze,
-                           const Coordinate& prev, const Coordinate& cur) {
+bool PathElementIsFeasible(const vector<vector<Color>> &maze,
+                           const Coordinate &prev, const Coordinate &cur) {
   if (!(0 <= cur.x && cur.x < maze.size() && 0 <= cur.y &&
         cur.y < maze[cur.x].size() && maze[cur.x][cur.y] == Color::kWhite)) {
     return false;
@@ -56,9 +95,9 @@ bool PathElementIsFeasible(const vector<vector<Color>>& maze,
          cur == Coordinate{prev.x, prev.y - 1};
 }
 
-bool SearchMazeWrapper(TimedExecutor& executor,
-                       const vector<vector<Color>>& maze, const Coordinate& s,
-                       const Coordinate& e) {
+bool SearchMazeWrapper(TimedExecutor &executor,
+                       const vector<vector<Color>> &maze, const Coordinate &s,
+                       const Coordinate &e) {
   vector<vector<Color>> copy = maze;
 
   auto path = executor.Run([&] { return SearchMaze(copy, s, e); });
@@ -80,7 +119,7 @@ bool SearchMazeWrapper(TimedExecutor& executor,
   return true;
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
   std::vector<std::string> args{argv + 1, argv + argc};
   std::vector<std::string> param_names{"executor", "maze", "s", "e"};
   return GenericTestMain(args, "search_maze.cc", "search_maze.tsv",
